@@ -8,6 +8,36 @@
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else>
+      <div v-if="submittedOrders.length > 0" class="card" style="margin-bottom: 1.25rem;">
+        <div class="card-header">
+          <h3 class="card-title">{{ t('restocking.submittedOrders') }} ({{ submittedOrders.length }})</h3>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>{{ t('restocking.orderNumber') }}</th>
+                <th>{{ t('restocking.items') }}</th>
+                <th>{{ t('restocking.totalCost') }}</th>
+                <th>{{ t('restocking.status') }}</th>
+                <th>{{ t('restocking.submittedDate') }}</th>
+                <th>{{ t('restocking.expectedDelivery') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in submittedOrders" :key="order.id">
+                <td><strong>{{ order.order_number }}</strong></td>
+                <td>{{ order.items.length }} items</td>
+                <td><strong>${{ order.total_cost.toLocaleString() }}</strong></td>
+                <td><span class="badge submitted">{{ t('status.submitted') }}</span></td>
+                <td>{{ formatDateTime(order.submitted_date) }}</td>
+                <td>{{ formatDateTime(order.expected_delivery) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="stats-grid">
         <div class="stat-card success">
           <div class="stat-label">{{ t('status.delivered') }}</div>
@@ -95,6 +125,7 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+    const submittedOrders = ref([])
 
     // Use shared filters
     const {
@@ -124,9 +155,18 @@ export default {
       }
     }
 
+    const loadSubmittedOrders = async () => {
+      try {
+        submittedOrders.value = await api.getSubmittedOrders()
+      } catch (err) {
+        console.error('Failed to load submitted restocking orders:', err)
+      }
+    }
+
     // Watch for filter changes and reload data
     watch([selectedPeriod, selectedLocation, selectedCategory, selectedStatus], () => {
       loadOrders()
+      loadSubmittedOrders()
     })
 
     const getOrdersByStatus = (status) => {
@@ -153,16 +193,34 @@ export default {
       })
     }
 
-    onMounted(loadOrders)
+    const formatDateTime = (dateString) => {
+      if (!dateString) return '—'
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return '—'
+      const { currentLocale } = useI18n()
+      const locale = currentLocale.value === 'ja' ? 'ja-JP' : 'en-US'
+      return date.toLocaleDateString(locale, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    }
+
+    onMounted(() => {
+      loadOrders()
+      loadSubmittedOrders()
+    })
 
     return {
       t,
       loading,
       error,
       orders,
+      submittedOrders,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
+      formatDateTime,
       currencySymbol,
       translateProductName,
       translateCustomerName
@@ -275,5 +333,10 @@ export default {
 .item-meta {
   font-size: 0.813rem;
   color: #64748b;
+}
+
+.badge.submitted {
+  background: #ede9fe;
+  color: #5b21b6;
 }
 </style>

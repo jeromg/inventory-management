@@ -15,6 +15,7 @@ const router = createRouter({
     { path: '/inventory', component: Inventory },
     { path: '/orders', component: Orders },
     { path: '/demand', component: Demand },
+    { path: '/restocking', component: () => import('./views/Restocking.vue') },
     { path: '/spending', component: Spending },
     { path: '/reports', component: Reports }
   ]
